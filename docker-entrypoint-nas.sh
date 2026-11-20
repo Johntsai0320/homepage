@@ -58,6 +58,15 @@ validate_git_source() {
     return 0
 }
 
+apply_file_ownership() {
+    target_path="$1"
+    puid="${PUID:-0}"
+    pgid="${PGID:-0}"
+    if [ "${puid}" != "0" ] && [ "$(id -u)" = "0" ]; then
+        chown "${puid}:${pgid}" "${target_path}" 2>/dev/null || true
+    fi
+}
+
 sync_github_configs() {
     if ! is_true "${AUTO_SYNC_GITHUB}"; then
         return 0
@@ -94,7 +103,9 @@ sync_github_configs() {
         mkdir -p "${CONFIG_DIR}"
         for src in "${SYNC_DIR}/config"/*.yaml; do
             [ -e "${src}" ] || continue
-            cp "${src}" "${CONFIG_DIR}/$(basename "${src}")"
+            dest="${CONFIG_DIR}/$(basename "${src}")"
+            cp "${src}" "${dest}"
+            apply_file_ownership "${dest}"
         done
         log_info "Synced YAML configs from GitHub repository."
     fi
@@ -112,6 +123,7 @@ seed_default_configs() {
         dest="${CONFIG_DIR}/${name}"
         if [ ! -e "${dest}" ]; then
             cp "${src}" "${dest}"
+            apply_file_ownership "${dest}"
             log_info "Seeded default config: ${name}"
         fi
     done
