@@ -1,0 +1,5 @@
+.env
+config/logs/
+*.log
+.DS_Store
+@eaDir/

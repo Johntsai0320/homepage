@@ -1,0 +1,35 @@
+---
+# 透過 .env 的 HOMEPAGE_VAR_* 自動替換 {{HOMEPAGE_VAR_*}}，避免私網或 Tailscale IP 寫死進 Git
+# 待 Uptime Kuma 建立好 Status Page（如 slug: nas）後，可取消下方 widget 註解顯示即時健康統計
+
+- NAS 核心服務:
+    - Synology DSM:
+        icon: synology.png
+        href: "https://{{HOMEPAGE_VAR_NAS_HOST}}:{{HOMEPAGE_VAR_DSM_PORT}}"
+        description: DS718+ 系統管理控制台
+
+    - Vaultwarden:
+        icon: bitwarden.png
+        href: "{{HOMEPAGE_VAR_VAULTWARDEN_URL}}"
+        description: 私人密碼庫與 2FA
+
+- 影音與閱讀:
+    - LibreTV:
+        icon: mdi-television-play
+        href: "{{HOMEPAGE_VAR_LIBRETV_URL}}"
+        description: 線上影視與直播串流
+
+    - 雲端書閣 Novel:
+        icon: mdi-book-open-page-variant
+        href: "{{HOMEPAGE_VAR_NOVEL_URL}}"
+        description: NAS EPUB / TXT 小說閱讀
+
+- 系統與監控:
+    - Uptime Kuma:
+        icon: uptime-kuma.png
+        href: "{{HOMEPAGE_VAR_UPTIME_KUMA_URL}}"
+        description: 服務在線狀態與備份 Webhook 監控
+        # widget:
+        #   type: uptimekuma
+        #   url: http://host.docker.internal:3001
+        #   slug: nas

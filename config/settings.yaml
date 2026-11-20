@@ -1,0 +1,17 @@
+---
+# https://gethomepage.dev/configs/settings/
+
+title: NAS Services
+language: zh-Hant
+theme: dark
+color: slate
+layout:
+  NAS 核心服務:
+    style: row
+    columns: 2
+  影音與閱讀:
+    style: row
+    columns: 2
+  系統與監控:
+    style: row
+    columns: 2

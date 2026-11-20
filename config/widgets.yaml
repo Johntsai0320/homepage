@@ -1,0 +1,22 @@
+---
+# 針對 DS718+ 純 HDD 與 2GB RAM 最佳化：
+# - refresh 設為 15000ms（15 秒），降低輪詢負載
+# - 不啟用 disk 欄位（Synology Btrfs RAID 不支援透過 systeminformation 讀取容量）
+
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: medium
+      timeStyle: short
+      hourCycle: h23
+
+- search:
+    provider: google
+    target: _blank
+
+- resources:
+    cpu: true
+    memory: true
+    cputemp: false
+    uptime: true
+    refresh: 15000

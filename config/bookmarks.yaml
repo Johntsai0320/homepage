@@ -1,0 +1,10 @@
+---
+# https://gethomepage.dev/configs/bookmarks/
+
+- 常用連結:
+    - GitHub:
+        - abbr: GH
+          href: https://github.com/Johntsai0320
+    - Tailscale Admin:
+        - abbr: TS
+          href: https://login.tailscale.com/admin/machines
