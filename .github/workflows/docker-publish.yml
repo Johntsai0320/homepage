@@ -52,6 +52,8 @@ jobs:
           docker run -d --name homepage-smoke \
             -p 13010:3000 \
             -v "$TMP_CFG:/app/config" \
+            -e PUID="$(id -u)" \
+            -e PGID="$(id -g)" \
             -e HOMEPAGE_ALLOWED_HOSTS=127.0.0.1:13010,localhost:13010 \
             nas-homepage-test:ci
 
