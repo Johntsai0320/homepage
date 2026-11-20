@@ -1,0 +1,14 @@
+.git
+.github
+.env
+.env.example
+.gitignore
+tests
+README.md
+docker-compose.yml
+synology-docker-config.json
+__pycache__
+*.pyc
+*.log
+.DS_Store
+@eaDir/

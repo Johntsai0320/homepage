@@ -1,0 +1,179 @@
+name: docker-publish
+
+# 推送至 main 分支或版本標籤 (如 v1.0.0) 時自動驗證設定並建置多架構映像檔發布至 GHCR：
+# ghcr.io/johntsai0320/homepage:latest
+# 使用 GitHub Actions 內建 GITHUB_TOKEN，無需額外設定 secrets。
+
+on:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML for manifest validation
+        run: python3 -m pip install --quiet pyyaml
+
+      - name: Run config & entrypoint unit tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Build local test image and smoke test container
+        run: |
+          docker build -t nas-homepage-test:ci .
+
+          TMP_CFG="$(mktemp -d)"
+          chmod 755 "$TMP_CFG"
+
+          docker run -d --name homepage-smoke \
+            -p 13010:3000 \
+            -v "$TMP_CFG:/app/config" \
+            -e HOMEPAGE_ALLOWED_HOSTS=127.0.0.1:13010,localhost:13010 \
+            nas-homepage-test:ci
+
+          trap 'docker logs homepage-smoke || true; docker rm -f homepage-smoke || true; rm -rf "$TMP_CFG"' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:13010/api/healthcheck >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+
+          curl -fsS http://127.0.0.1:13010/api/healthcheck
+          curl -fsS http://127.0.0.1:13010/ | grep -q "NAS Services"
+
+          for f in settings.yaml widgets.yaml services.yaml bookmarks.yaml; do
+            test -s "$TMP_CFG/$f"
+          done
+
+          # 確認關閉 AUTO_SYNC_GITHUB 時重啟不會覆蓋使用者自訂設定
+          echo "# user-customized" >> "$TMP_CFG/settings.yaml"
+          docker restart homepage-smoke
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:13010/api/healthcheck >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          grep -q "# user-customized" "$TMP_CFG/settings.yaml"
+
+  build:
+    needs: verify
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+    runs-on: ${{ matrix.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute lowercase image name
+        id: image
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          outputs: type=image,name=${{ steps.image.outputs.name }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p "${{ runner.temp }}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download architecture digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Compute lowercase image name
+        id: image
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Create and push multi-arch manifest (GHCR)
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< '${{ steps.meta.outputs.json }}') \
+            $(printf '${{ steps.image.outputs.name }}@sha256:%s ' *)

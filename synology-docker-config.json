@@ -1,0 +1,88 @@
+{
+   "CapAdd" : null,
+   "CapDrop" : null,
+   "cmd" : "",
+   "cpu_priority" : 50,
+   "enable_publish_all_ports" : false,
+   "enable_restart_policy" : true,
+   "enabled" : true,
+   "env_variables" : [
+      {
+         "key" : "TZ",
+         "value" : "Asia/Taipei"
+      },
+      {
+         "key" : "NODE_OPTIONS",
+         "value" : "--max-old-space-size=128"
+      },
+      {
+         "key" : "HOMEPAGE_ALLOWED_HOSTS",
+         "value" : "localhost:3010,127.0.0.1:3010"
+      },
+      {
+         "key" : "HOMEPAGE_VAR_NAS_HOST",
+         "value" : "192.168.1.100"
+      },
+      {
+         "key" : "HOMEPAGE_VAR_DSM_PORT",
+         "value" : "5001"
+      },
+      {
+         "key" : "HOMEPAGE_VAR_LIBRETV_URL",
+         "value" : "http://192.168.1.100:8080"
+      },
+      {
+         "key" : "HOMEPAGE_VAR_NOVEL_URL",
+         "value" : "http://192.168.1.100:3000"
+      },
+      {
+         "key" : "HOMEPAGE_VAR_VAULTWARDEN_URL",
+         "value" : "http://192.168.1.100:8200"
+      },
+      {
+         "key" : "HOMEPAGE_VAR_UPTIME_KUMA_URL",
+         "value" : "http://192.168.1.100:3001"
+      },
+      {
+         "key" : "AUTO_SYNC_GITHUB",
+         "value" : "false"
+      },
+      {
+         "key" : "GITHUB_REPO",
+         "value" : "https://github.com/Johntsai0320/homepage.git"
+      },
+      {
+         "key" : "GITHUB_BRANCH",
+         "value" : "main"
+      }
+   ],
+   "image" : "ghcr.io/johntsai0320/homepage:latest",
+   "is_ddsm" : false,
+   "is_package" : false,
+   "memory_limit" : 201326592,
+   "name" : "homepage",
+   "network" : [
+      {
+         "driver" : "bridge",
+         "name" : "bridge"
+      }
+   ],
+   "network_mode" : "bridge",
+   "port_bindings" : [
+      {
+         "container_port" : 3000,
+         "host_port" : 3010,
+         "type" : "tcp"
+      }
+   ],
+   "privileged" : false,
+   "use_host_network" : false,
+   "volume_bindings" : [
+      {
+         "host_volume_file" : "/docker/homepage/config",
+         "is_directory" : true,
+         "mount_point" : "/app/config",
+         "type" : "rw"
+      }
+   ]
+}
